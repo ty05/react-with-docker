@@ -1,0 +1,48 @@
+name: Trigger auto deployment for app-taka
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '**'
+    - '.github/workflows/app-taka-AutoDeployTrigger-bad9de50-e973-4464-9f12-6634bb540a84.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.APPTAKA_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.APPTAKA_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.APPTAKA_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          registryUrl: 
+          registryUsername: ${{ secrets.APPTAKA_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.APPTAKA_REGISTRY_PASSWORD }}
+          containerAppName: app-taka
+          resourceGroup: vectordb
+          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
